@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+import getpass
+
+__doc__ = """Syzacz™ CLI
+
+Usage:
+  syzacz-cli list-users
+  syzacz-cli list-members
+  syzacz-cli add-user <username> <common-name> <email>
+  syzacz-cli change-password <username>
+  syzacz-cli (activate | deactivate) <username>
+  syzacz-cli xmpp (activate | deactivate) <username>
+  syzacz-cli staff (activate | deactivate) <username>
+  syzacz-cli admin (activate | deactivate) <username>
+  syzacz-cli debug
+  syzacz-cli (-h | --help)
+  syzacz-cli --version
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+"""
+from docopt import docopt
+from randstr import randstr
+import syzacz
+
+
+if __name__ == '__main__':
+    arguments = docopt(__doc__, version='syzacz-cli 0.1')
+    # print(arguments)
+
+    session = syzacz.Session()
+
+    if arguments['list-users']:
+        print(session.list_users())
+    elif arguments['list-members']:
+        print(session.list_members())
+    elif arguments['add-user']:
+        session.add_user(username=arguments['<username>'],
+                         common_name=arguments['<common-name>'],
+                         email=arguments['<email>'])
+    elif arguments['change-password']:
+        password = getpass.getpass("User password: ")
+
+        if len(password) == 0:
+            password = randstr(20)
+
+            session.change_password(username=arguments['<username>'],
+                                    password=password)
+
+            print("Password set to: {password}".format(password=password))
+        else:
+            password_confirm = getpass.getpass("Confirm password: ")
+
+            if password != password_confirm:
+                print("Passwords differ!")
+
+            session.change_password(username=arguments['<username>'],
+                                    password=password)
+    elif arguments['xmpp'] and arguments['activate']:
+        session.xmpp_activate(username=arguments['<username>'])
+    elif arguments['xmpp'] and arguments['deactivate']:
+        session.xmpp_deactivate(username=arguments['<username>'])
+
+    elif arguments['staff'] and arguments['activate']:
+        session.staff_activate(username=arguments['<username>'])
+    elif arguments['staff'] and arguments['deactivate']:
+        session.staff_deactivate(username=arguments['<username>'])
+
+    elif arguments['admin'] and arguments['activate']:
+        session.admin_activate(username=arguments['<username>'])
+    elif arguments['admin'] and arguments['deactivate']:
+        session.admin_deactivate(username=arguments['<username>'])
+
+    elif arguments['activate']:
+        session.activate(username=arguments['<username>'])
+    elif arguments['deactivate']:
+        session.deactivate(username=arguments['<username>'])
+
+    elif arguments['debug']:
+        session.query_debug(search_base="ou=people,dc=hackerspace-krk,dc=pl",
+                            search_filter="(&(objectClass=*)(memberOf=cn=members,ou=groups,dc=hackerspace-krk,dc=pl)(memberOf=cn=xmpp,ou=groups,dc=hackerspace-krk,dc=pl))",
+                            arguments=['uid'])
+
+    session.close()
