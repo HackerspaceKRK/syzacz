@@ -1,7 +1,7 @@
 [ldap]
 base_dn: dc=hackerspace-krk,dc=pl
 url: ldap://net-ldap1.int1.hskrk.pl:389
-bind_dn: cn=syzacz,ou=services,dc=hackerspace-krk,dc=pl
+bind_dn: cn=admin-account,ou=people,dc=hackerspace-krk,dc=pl
 passwd: :)
 
 user_ou: ou=people,%(base_dn)s

@@ -31,15 +31,7 @@ if __name__ == '__main__':
 
     session = syzacz.Session()
 
-    if arguments['list-users']:
-        print(session.list_users())
-    elif arguments['list-members']:
-        print(session.list_members())
-    elif arguments['add-user']:
-        session.add_user(username=arguments['<username>'],
-                         common_name=arguments['<common-name>'],
-                         email=arguments['<email>'])
-    elif arguments['change-password']:
+    def change_password():
         password = getpass.getpass("User password: ")
 
         if len(password) == 0:
@@ -57,6 +49,18 @@ if __name__ == '__main__':
 
             session.change_password(username=arguments['<username>'],
                                     password=password)
+
+    if arguments['list-users']:
+        print(session.list_users())
+    elif arguments['list-members']:
+        print(session.list_members())
+    elif arguments['add-user']:
+        session.add_user(username=arguments['<username>'],
+                         common_name=arguments['<common-name>'],
+                         email=arguments['<email>'])
+        change_password()
+    elif arguments['change-password']:
+        change_password()
     elif arguments['xmpp'] and arguments['activate']:
         session.xmpp_activate(username=arguments['<username>'])
     elif arguments['xmpp'] and arguments['deactivate']:
