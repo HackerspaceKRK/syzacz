@@ -3,7 +3,8 @@ syzacz
 
 Syzacz - czyli SYstem ZArządzania CZłonkami
 
- Usage:
+```
+Usage:
   syzacz-cli list-users
   syzacz-cli list-members
   syzacz-cli add-user <username> <common-name> <email>
@@ -15,6 +16,6 @@ Syzacz - czyli SYstem ZArządzania CZłonkami
   syzacz-cli debug
   syzacz-cli (-h | --help)
   syzacz-cli --version
-
+```
 ## License
 [CC BY-NC-SA](https://creativecommons.org/licenses/by-nc-sa/3.0/)
