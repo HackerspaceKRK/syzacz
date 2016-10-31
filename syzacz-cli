@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 import getpass
+from docopt import docopt
+from randstr import randstr
+from pprint import pprint
+from prettytable import PrettyTable
+from bpython import embed
+import syzacz
+
 
 __doc__ = """Syzacz™ CLI
 
 Usage:
   syzacz-cli list-users
-  syzacz-cli list-members
+  syzacz-cli list-groups
   syzacz-cli add-user <username> <common-name> <email>
+  syzacz-cli delete-user <username>
   syzacz-cli change-password <username>
+  syzacz-cli upgrade-schema <username>
   syzacz-cli (activate | deactivate) <username>
-  syzacz-cli xmpp (activate | deactivate) <username>
-  syzacz-cli staff (activate | deactivate) <username>
-  syzacz-cli admin (activate | deactivate) <username>
-  syzacz-cli debug
+  syzacz-cli add-to-groups <username> <groups>
+  syzacz-cli delete-from-groups <username> <groups>
+  syzacz-cli shell
   syzacz-cli (-h | --help)
   syzacz-cli --version
 
@@ -20,70 +28,107 @@ Options:
   -h --help     Show this screen.
   --version     Show version.
 """
-from docopt import docopt
-from randstr import randstr
-import syzacz
+
+
+class InputMismatch(Exception):
+    pass
+
+
+def password_prompt():
+    password = getpass.getpass("User password (empty for random): ")
+
+    if len(password) == 0:
+        password = randstr(20)
+        print("Random password: {password}".format(password=password))
+    else:
+        password_confirm = getpass.getpass("Confirm password: ")
+
+        if password != password_confirm:
+            print("Passwords differ!")
+            raise InputMismatch
+
+    return password
+
+
+def simple_table(entries, attributes):
+    t = PrettyTable(attributes)
+
+    for attribute in attributes:
+        t.align[attribute] = 'l'
+
+    for entry in entries:
+        f = []
+
+        for attribute in attributes:
+            if attribute not in entry:
+                f.append('---')
+                continue
+
+            if isinstance(entry[attribute], list):
+                f.append(', '.join(entry[attribute]))
+                continue
+
+            f.append(entry[attribute])
+
+        t.add_row(f)
+
+    return str(t)
 
 
 if __name__ == '__main__':
-    arguments = docopt(__doc__, version='syzacz-cli 0.1')
-    # print(arguments)
-
+    arguments = docopt(__doc__, version='syzacz-cli 0.2')
     session = syzacz.Session()
 
     def change_password():
-        password = getpass.getpass("User password: ")
-
-        if len(password) == 0:
-            password = randstr(20)
-
+        try:
             session.change_password(username=arguments['<username>'],
-                                    password=password)
-
-            print("Password set to: {password}".format(password=password))
-        else:
-            password_confirm = getpass.getpass("Confirm password: ")
-
-            if password != password_confirm:
-                print("Passwords differ!")
-
-            session.change_password(username=arguments['<username>'],
-                                    password=password)
+                                    password=password_prompt())
+        except InputMismatch:
+            print('Input mismatch, password unchanged.')
 
     if arguments['list-users']:
-        print(session.list_users())
-    elif arguments['list-members']:
-        print(session.list_members())
+        attributes = ['uid', 'uidNumber', 'cn', 'mail', 'groups']
+        users = session.get_users(attributes=attributes)
+        table = simple_table(users, attributes=attributes)
+        print(table)
+
+    elif arguments['list-groups']:
+        attributes = ['cn', 'gidNumber', 'description']
+        groups = session.get_groups(attributes=attributes)
+        table = simple_table(groups, attributes=attributes)
+        print(table)
+
     elif arguments['add-user']:
         session.add_user(username=arguments['<username>'],
                          common_name=arguments['<common-name>'],
                          email=arguments['<email>'])
         change_password()
+
+    elif arguments['delete-user']:
+        session.delete_user(username=arguments['<username>'])
+
     elif arguments['change-password']:
         change_password()
-    elif arguments['xmpp'] and arguments['activate']:
-        session.xmpp_activate(username=arguments['<username>'])
-    elif arguments['xmpp'] and arguments['deactivate']:
-        session.xmpp_deactivate(username=arguments['<username>'])
 
-    elif arguments['staff'] and arguments['activate']:
-        session.staff_activate(username=arguments['<username>'])
-    elif arguments['staff'] and arguments['deactivate']:
-        session.staff_deactivate(username=arguments['<username>'])
-
-    elif arguments['admin'] and arguments['activate']:
-        session.admin_activate(username=arguments['<username>'])
-    elif arguments['admin'] and arguments['deactivate']:
-        session.admin_deactivate(username=arguments['<username>'])
+    elif arguments['upgrade-schema']:
+        session.upgrade_user_schema(username=arguments['<username>'])
 
     elif arguments['activate']:
         session.activate(username=arguments['<username>'])
     elif arguments['deactivate']:
         session.deactivate(username=arguments['<username>'])
 
-    elif arguments['debug']:
-        session.query_debug(search_base="ou=people,dc=hackerspace-krk,dc=pl",
-                            search_filter="(&(objectClass=*)(memberOf=cn=members,ou=groups,dc=hackerspace-krk,dc=pl)(memberOf=cn=xmpp,ou=groups,dc=hackerspace-krk,dc=pl))",
-                            arguments=['uid'])
+    elif arguments['add-to-groups']:
+        groups = arguments['<groups>'].split(',')
+        session.add_to_groups(username=arguments['<username>'], groups=groups)
+    elif arguments['delete-from-groups']:
+        groups = arguments['<groups>'].split(',')
+        session.delete_from_groups(username=arguments['<username>'], groups=groups)
+
+    elif arguments['shell']:
+        context = {
+            'session': session,
+        }
+        embed(locals_=context)
 
     session.close()
